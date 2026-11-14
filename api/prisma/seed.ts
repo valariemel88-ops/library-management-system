@@ -1,5 +1,5 @@
-
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, Role } from '@prisma/client';
+import * as bcrypt from 'bcrypt';
 
 const prisma = new PrismaClient();
 
@@ -64,9 +64,39 @@ async function main() {
     });
   }
 
+  // Create a librarian account
+  const librarianEmail = process.env.LIBRARIAN_EMAIL;
+  const librarianPassword = process.env.LIBRARIAN_PASSWORD;
+  const librarianName =
+    process.env.LIBRARIAN_NAME || 'Library Librarian';
+
+  if (!librarianEmail || !librarianPassword) {
+    throw new Error(
+      'Please configure LIBRARIAN_EMAIL and LIBRARIAN_PASSWORD in your .env file.',
+    );
+  }
+
+  const hashedPassword = await bcrypt.hash(librarianPassword, 12);
+
+  await prisma.user.upsert({
+    where: { email: librarianEmail },
+    update: {
+      name: librarianName,
+      password: hashedPassword,
+      role: Role.LIBRARIAN,
+    },
+    create: {
+      name: librarianName,
+      email: librarianEmail,
+      password: hashedPassword,
+      role: Role.LIBRARIAN,
+    },
+  });
+
   console.log('Database seeded successfully!');
   console.log(`Genres created: ${genres.length}`);
   console.log(`Books added: ${books.length}`);
+  console.log(`Librarian account created: ${librarianEmail}`);
 }
 
 main()
